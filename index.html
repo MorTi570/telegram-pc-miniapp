@@ -1,0 +1,77 @@
+<!doctype html>
+<html lang="pl">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>Sterowanie komputerami</title>
+  <script src="https://telegram.org/js/telegram-web-app.js"></script>
+  <style>
+    :root { color-scheme: light dark; --bg: var(--tg-theme-bg-color, #10151c); --card: var(--tg-theme-secondary-bg-color, #1b2430); --text: var(--tg-theme-text-color, #f5f7fa); --muted: var(--tg-theme-hint-color, #aab4c0); --accent: var(--tg-theme-button-color, #2aabee); }
+    * { box-sizing: border-box; }
+    body { margin: 0; padding: 22px 16px calc(26px + env(safe-area-inset-bottom)); font-family: system-ui, sans-serif; color: var(--text); background: var(--bg); }
+    main { max-width: 560px; margin: 0 auto; }
+    h1 { font-size: 24px; margin: 4px 0 6px; }
+    .sub { color: var(--muted); margin: 0 0 22px; font-size: 14px; }
+    .label { font-size: 13px; color: var(--muted); margin: 18px 0 8px; }
+    .pcs, .actions { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+    button { font: inherit; border: 0; border-radius: 14px; padding: 15px 12px; font-weight: 650; color: var(--text); background: var(--card); min-height: 54px; cursor: pointer; }
+    button.selected { background: var(--accent); color: var(--tg-theme-button-text-color, #fff); outline: 2px solid transparent; }
+    button.action { text-align: left; display: flex; align-items: center; gap: 10px; }
+    button.wide { grid-column: 1 / -1; }
+    .emoji { font-size: 22px; }
+    .note { color: var(--muted); font-size: 12px; line-height: 1.5; margin-top: 18px; }
+    #status { margin-top: 16px; border-radius: 12px; padding: 12px; background: var(--card); font-size: 14px; min-height: 42px; }
+    .danger { border: 1px solid #d95c5c; }
+  </style>
+</head>
+<body>
+<main>
+  <h1>🖥️ Sterowanie komputerami</h1>
+  <p class="sub">Wybierz komputer, a potem polecenie.</p>
+
+  <div class="label">KOMPUTER</div>
+  <div class="pcs">
+    <button id="pc1" class="selected" onclick="choosePC('pc1')">🖥️ PC1</button>
+    <button id="pc2" onclick="choosePC('pc2')">💻 PC2</button>
+  </div>
+
+  <div class="label">POLECENIA</div>
+  <div class="actions">
+    <button class="action wide" onclick="sendAction('lock')"><span class="emoji">🔒</span><span>Zablokuj komputer</span></button>
+    <button class="action danger" onclick="confirmAction('shutdown')"><span class="emoji">⏻</span><span>Wyłącz</span></button>
+    <button class="action danger" onclick="confirmAction('restart')"><span class="emoji">🔄</span><span>Uruchom ponownie</span></button>
+    <button class="action wide" onclick="sendAction('cancelshutdown')"><span class="emoji">✖️</span><span>Anuluj wyłączanie</span></button>
+  </div>
+  <div id="status" role="status">Gotowy. Wybrano PC1.</div>
+  <p class="note">Polecenia są wysyłane do bota Telegram. Komputer docelowy musi mieć uruchomiony program sterujący i być skonfigurowany z odpowiednim identyfikatorem PC.</p>
+</main>
+<script>
+  const tg = window.Telegram?.WebApp;
+  let selectedPC = 'pc1';
+  if (tg) { tg.ready(); tg.expand(); }
+  function choosePC(pc) {
+    selectedPC = pc;
+    document.getElementById('pc1').classList.toggle('selected', pc === 'pc1');
+    document.getElementById('pc2').classList.toggle('selected', pc === 'pc2');
+    setStatus('Wybrano ' + pc.toUpperCase() + '.');
+    if (tg?.HapticFeedback) tg.HapticFeedback.selectionChanged();
+  }
+  function setStatus(msg) { document.getElementById('status').textContent = msg; }
+  function sendAction(action) {
+    if (!tg || !tg.initData) {
+      setStatus('Otwórz ten panel z przycisku w bocie Telegram, a nie bezpośrednio w przeglądarce.');
+      return;
+    }
+    const names = {lock:'Zablokuj komputer', shutdown:'Wyłącz komputer', restart:'Uruchom ponownie', cancelshutdown:'Anuluj wyłączanie'};
+    setStatus('Wysyłam polecenie: ' + names[action] + ' → ' + selectedPC.toUpperCase() + '…');
+    tg.sendData(JSON.stringify({pc_id:selectedPC, action:action}));
+    if (tg.HapticFeedback) tg.HapticFeedback.notificationOccurred('success');
+    setTimeout(() => tg.close(), 450);
+  }
+  function confirmAction(action) {
+    const text = action === 'shutdown' ? 'Wyłączyć ' : 'Uruchomić ponownie ';
+    if (confirm(text + selectedPC.toUpperCase() + '?')) sendAction(action);
+  }
+</script>
+</body>
+</html>
